@@ -2,7 +2,7 @@
        "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-<title>osTicket LDAP User Information Addon v0.1</title>
+<title>osTicket LDAP User Information Addon</title>
 </head>
 <body>
 
@@ -14,7 +14,8 @@ require_once 'class_function.php';
 
 // Initialization of config and functions:
 $config = new GlobalConfig();
-$functions = new Functions($config, $mysqli);
+//$functions = new Functions($config, $mysqli);
+$functions = new Functions($config);
 
 // MySQL connection to osTicket database
 $mysqli = new mysqli($config->mysql_host, $config->mysql_user, $config->mysql_pw, $config->mysql_db);
@@ -44,7 +45,7 @@ if (Net_LDAP2::isError($ldap)) {
 	echo $functions->logg("------------------------------------------------------------------------------------------------");
 	echo $functions->logg("End logging. Looks like something went wrong! (>_<)");
 	echo "Error executing ".$_SERVER['PHP_SELF']."<br>";
-	echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended...";
+	echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended...<br>";
     die();
 }
 
@@ -73,7 +74,7 @@ if (Net_LDAP2::isError($ldap_search)) {
 	echo $functions->logg("------------------------------------------------------------------------------------------------");
 	echo $functions->logg("End logging. Looks like something went wrong! (>_<)");
 	echo "Error executing ".$_SERVER['PHP_SELF']."<br>";
-	echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended...";
+	echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended...<br>";
     die();
 }
 
@@ -97,7 +98,7 @@ if (Net_LDAP2::isError($ldap_result)) {
 	echo $functions->logg("------------------------------------------------------------------------------------------------");
 	echo $functions->logg("End logging. Looks like something went wrong! (>_<)");
 	echo "Error executing ".$_SERVER['PHP_SELF']."<br>";
-	echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended...";
+	echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended...<br>";
     die();
 } else {
 	// Fetch all users 
@@ -113,6 +114,58 @@ if (Net_LDAP2::isError($ldap_result)) {
 //die();
 
 if (!$mysqli->connect_errno) {
+	// Agents
+	// Check if agents shall be updated with LDAP info
+	if ($config->agents == "true") {
+		// Select all osTicket Agents
+		$qry_ostagents = "SELECT ost_staff.username FROM ost_staff
+			WHERE ost_staff.username IS NOT NULL";
+			
+		$res_ostagents = $mysqli->query($qry_ostagents);
+		
+		// DEBUG and LOGG number of osTicket agents
+		echo $functions->logg("Number of osTicket agents: " . $res_ostagents->num_rows);	
+	
+		// Go thru every osTicket agent and modify every osTicket agents information	
+		while ($row_ostagents = $res_ostagents->fetch_assoc()) {
+		    // DEBUG and LOGG osTicket user which gets modified now
+		    echo $functions->logg("Modifiying now the following osTicket agent: " . $row_ostagents['username']);
+		    
+		    // Check if osTicket agent is also an LDAP user
+			if ($row_ostagents['username'] == $array_ad_users[$row_ostagents['username']]['samaccountname'][0]) {
+				//DEBUG Stuff
+				//echo "Agent Username:".$row_ostagents['username']."<br>";
+				//echo "LDAP Username:".$array_ad_users[$row_ostagents['username']]['samaccountname'][0]."<br>";
+				//echo "Phone Number:".$array_ad_users[$row_ostagents['username']]['telephonenumber'][0]."<br>";
+				//echo "Mobile Number:".$array_ad_users[$row_ostagents['username']]['mobile'][0]."<br>";
+				
+				// Just update telephone and mobile number for agents
+				// Telephonenumber
+				$qry_update_ostagent_telephonenumber = "update ost_staff 
+					SET ost_staff.phone='" . $array_ad_users[$row_ostagents['username']]['telephonenumber'][0] . "'
+					WHERE (ost_staff.username='" . $array_ad_users[$row_ostagents['username']]['samaccountname'][0] . "')";
+					
+				$res_update_ostagent_detail_telephonenumber = $mysqli->query($qry_update_ostagent_telephonenumber);
+				
+				// Mobile Number
+				$qry_update_ostagent_mobile = "update ost_staff 
+					SET ost_staff.mobile='" . $array_ad_users[$row_ostagents['username']]['mobile'][0] . "'
+					WHERE (ost_staff.username='" . $array_ad_users[$row_ostagents['username']]['samaccountname'][0] . "')";
+					
+				$res_update_ostagent_detail_mobile = $mysqli->query($qry_update_ostagent_mobile);
+				
+				// DEBUG and LOGG number of changed database entries for that osTicket user
+				echo $functions->logg("Number of changed database entries for that agent: " . $mysqli->affected_rows);
+
+				} else {
+				// DEBUG and LOGG OsTicket Agent not in LDAP
+				echo $functions->logg("osTicket Agent: ".$row_ostagents['username']." not existing in LDAP. Skipping this agent...");
+			}
+		}
+	} else {
+	echo $functions->logg("Configuration to update agents is set to " . $config->agents . ". Skipping osTicket Agents...");
+	}
+	// Users
 	// Query additional fields from osTicket user information form (form_id=1)
 	// Default form fields have ID's 1 to 4, so query greater id 4
 	$qry_user_info_fields = "SELECT id,form_id,label,name FROM ost_form_field
@@ -180,11 +233,11 @@ if (!$mysqli->connect_errno) {
 				$res_update_ostuser_details = $mysqli->query($qry_update_ostuser_office);
 			
 				// DEBUG and LOGG number of changed database entries for that osTicket user
-				echo $functions->logg("Number of changed database entries for that user: " . $mysqli->affected_rows . " on ".$ost_contact_info_field_name);
+				echo $functions->logg("Number of changed database entries for that agent: " . $mysqli->affected_rows);
 			}
 		} else {
 			// DEBUG and LOGG OsTicket User not in LDAP
-			echo $functions->logg("OsTicket User: ".$row_ostusers['username']." not existing in LDAP. Skipping this User...");
+			echo $functions->logg("osTicket User: ".$row_ostusers['username']." not existing in LDAP. Skipping this user...");
 		}
 		
 		if (!($config->itdb_database == ""))
@@ -253,7 +306,7 @@ if (!$mysqli->connect_errno) {
 				echo $functions->logg("------------------------------------------------------------------------------------------------");
 				echo $functions->logg("End logging. Looks like something went wrong! (>_<)");
 				echo "Error executing ".$_SERVER['PHP_SELF']."<br>";
-				echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended...";
+				echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended...<br>";
 		    	die();
 			}
 			
@@ -290,14 +343,14 @@ if (!$mysqli->connect_errno) {
 } else {
 	echo $functions->logg("Failed to connect to OsTicket-Database: " . $mysqli->connect_error);
 	echo "Error executing ".$_SERVER['PHP_SELF']."<br>";
-	echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended...";
+	echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended...<br>";
 	die();
 }
-
 // DEBUG and LOGG End logging
 echo $functions->logg("------------------------------------------------------------------------------------------------");
 echo $functions->logg("End logging. We hope everything went fine! \(^_^)/");
-echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended successfully";
+echo @date('[Y-m-d @ H:i:s]')." Execution of ".$_SERVER['PHP_SELF']." ended successfully!<br>";
+
 ?>
 </body>
 </html>

@@ -2,7 +2,7 @@
        "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-<title>osTicket LDAP User Information Addon v0.2</title>
+<title>osTicket LDAP User Information Addon</title>
 </head>
 <body>
 
@@ -11,13 +11,14 @@ require_once 'class_function.php';
 
 // Initialization of config and functions:
 $config = new GlobalConfig();
-$functions = new Functions($config, $mysqli);
+//$functions = new Functions($config, $mysqli);
+$functions = new Functions($config);
 
 // MySQL connection to osTicket database
 $mysqli = new mysqli($config->mysql_host, $config->mysql_user, $config->mysql_pw, $config->mysql_db);
 
 ?>
-<h1>osTicket LDAP User Information Addon v0.2</h1>
+<h1>osTicket LDAP User Information Addon <?php echo $config->version ?></h1>
 
 <h3>Configuration:
 	<br>
@@ -142,6 +143,22 @@ $mysqli = new mysqli($config->mysql_host, $config->mysql_user, $config->mysql_pw
 		<td><input type='text' name='href_text_2' size='30' value='<?php echo ((isset($_POST['href_text_2']) && !empty($_POST['href_text_2'])) ? $_POST['href_text_2'] : $config->href_text_2)?>' /></td>	
 	</tr>
 </table>
+
+<table style="text-align:left">
+<th><em><strong><br>osTicket Agents Info</strong></em></th>
+	<tr>
+		<td>Update Agents phone/mobile numbers from LDAP</td>
+		<td>
+		<select name="agents">
+		<option value="true" <?php if(((isset($_POST['agents']) && !empty($_POST['agents'])) ? $_POST['agents'] : $config->agents) == 'true'){ echo ' selected="selected"'; } ?>>ON</option>
+		<option value="false" <?php if(((isset($_POST['agents']) && !empty($_POST['agents'])) ? $_POST['agents'] : $config->agents) == 'false'){ echo ' selected="selected"'; } ?>>OFF</option>
+		</select>
+		<span style="color:red">*</span>
+		</td>
+	</tr>
+</table>
+
+
 <table style="text-align:left">
 	<th><em><strong><br>osTicket User Info Fields</strong></em></th>
 	<?php
@@ -199,9 +216,14 @@ if (!$mysqli->connect_errno) {
 	echo "<tr><td><strong><br>Failed to connect to OsTicket-Database: " . $mysqli->connect_error . "</strong></td></tr>";
 }
 ?>
+</table>
+<table style="margin-top:20px">
 	<tr>
 		<td><input type="submit" name="submit" value="Save config"/></td>
-		<td><input type="submit" name="execute" value="Execute Update"/></td>
+		<td width="75"></td>
+		<td><input type="submit" name="execute" value="Execute Update & send logfile"/></td>
+		<td width="32.5"></td>
+		<td><input type="submit" name="smtp" value="Only send logfile"/></td>
 	</tr>
 </table>
 <?php
@@ -216,6 +238,7 @@ if(isset($_POST['submit'])) {
 		!empty($_POST['ldap_basedn']) &&
 		!empty($_POST['ldap_attributes']) &&
 		!empty($_POST['ldap_tls']) &&
+		!empty($_POST['agents']) &&
 		!empty($_POST['debug']) &&
 		!empty($_POST['logpath']) &&
 		!empty($_POST['logfilename'])) {
@@ -236,7 +259,7 @@ if(isset($_POST['submit'])) {
 				$array_ldap_attributes = explode(",",$value);
 				$array_ldap_attributes = array_unique($array_ldap_attributes);
 				foreach ($array_ldap_attributes as $attribute) {
-					if($attribute != "samaccountname" && $attribute != "cn" && $attribute != "telephonenumber") {
+					if($attribute != "samaccountname" && $attribute != "cn" && $attribute != "telephonenumber" && $attribute != "mobile") {
 						$valueString = $valueString . "'" . $attribute."',";
 					}
 				}
@@ -244,9 +267,9 @@ if(isset($_POST['submit'])) {
 				//echo $key . ' has the value of ' . $value . "<br>";
 				//Check if valuestring is empty, neccessary since it will break the config with one comma too much at the end of the ldap_attributes: samaccountname,cn,sn, <--- comma at the end breaks config
 				if ($valueString == "")	{
-   					$newconfig = preg_replace('/public \$'.$key.' = array\(\'samaccountname\',\'cn\',\'telephonenumber\'(,["\'](.+)?["\'])?\)/', 'public $'.$key.' = array(\'samaccountname\',\'cn\',\'telephonenumber\''.substr($valueString, 0, -1).')', $config);
+   					$newconfig = preg_replace('/public \$'.$key.' = array\(\'samaccountname\',\'cn\',\'telephonenumber\',\'mobile\'(,["\'](.+)?["\'])?\)/', 'public $'.$key.' = array(\'samaccountname\',\'cn\',\'telephonenumber\',\'mobile\''.substr($valueString, 0, -1).')', $config);
 			   	} else {
-			   		$newconfig = preg_replace('/public \$'.$key.' = array\(\'samaccountname\',\'cn\',\'telephonenumber\'(,["\'](.+)?["\'])?\)/', 'public $'.$key.' = array(\'samaccountname\',\'cn\',\'telephonenumber\','.substr($valueString, 0, -1).')', $config);
+			   		$newconfig = preg_replace('/public \$'.$key.' = array\(\'samaccountname\',\'cn\',\'telephonenumber\',\'mobile\'(,["\'](.+)?["\'])?\)/', 'public $'.$key.' = array(\'samaccountname\',\'cn\',\'telephonenumber\',\'mobile\','.substr($valueString, 0, -1).')', $config);
 			   	}
 				$config = $newconfig;
 				break;
@@ -318,10 +341,23 @@ if(isset($_POST['submit'])) {
 		<?php
 	}
 }
+
 if(isset($_POST['execute'])) {
-$output = shell_exec('php update_user_info.php');
-echo $output;
+	$output = shell_exec('php update_user_info.php');
+	echo $output;
+	$outexecsmtp = shell_exec('php smtp.php');
+	echo @date('[Y-m-d @ H:i:s]')." Logfile sent, at least we hope so... Check your inbox now!<br>";
+	echo $outexecsmtp;
 }
+
+	//shell_exec('php smtp.php');
+	
+if(isset($_POST['smtp'])) {
+	$outsmtp = shell_exec('php smtp.php');
+	echo @date('[Y-m-d @ H:i:s]')." Logfile sent, at least we hope so... Check your inbox now!<br>";
+	echo $outsmtp;
+}
+
 ?>
 </form>
 </body>
