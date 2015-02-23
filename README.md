@@ -23,6 +23,9 @@ Requirements
 -	Working osTicket versions:
   - v1.9.2
   - v1.9.3
+  - v1.9.4
+  - v1.9.5
+  - v1.9.5.1
 -	LDAP User Info Addon v0.2 or newer
 -	osTicket username(s) must match LDAP samaccountusername(s)
 -	LDAP users must have a mail address
