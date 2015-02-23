@@ -233,7 +233,7 @@ if (!$mysqli->connect_errno) {
 				$res_update_ostuser_details = $mysqli->query($qry_update_ostuser_office);
 			
 				// DEBUG and LOGG number of changed database entries for that osTicket user
-				echo $functions->logg("Number of changed database entries for that agent: " . $mysqli->affected_rows);
+				echo $functions->logg("Number of changed database entries for that user: " . $mysqli->affected_rows . " on " . $ost_contact_info_field_name);
 			}
 		} else {
 			// DEBUG and LOGG OsTicket User not in LDAP
