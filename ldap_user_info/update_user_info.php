@@ -282,8 +282,8 @@ if (!$mysqli->connect_errno) {
 					// href_1: Use computer name for link creation
 					// href_2: Use ITDB database ID for link creation
 					$users_computers = $users_computers."".$array_computers[$i]." ";
-					$users_computers = $users_computers."<a href=" . $config->href_1 . $array_computers[$i] . "\" target=\"_blank\">" . $config->href_text_1 . "</a>" . " ";
-					$users_computers = $users_computers."<a href=" . $config->href_2 . $array_computer_ids[$i] . "\" target=\"_blank\">" . $config->href_text_2 . "</a>" . "<br> ";		
+					$users_computers = $users_computers."<a href=" . $config->href_1 . $array_computers[$i] . ">" . $config->href_text_1 . "</a>" . " ";
+                                        $users_computers = $users_computers."<a href=" . $config->href_2 . $array_computer_ids[$i] . ">" . $config->href_text_2 . "</a>" . "<br> ";	
 				}
 				# Update computers for the osTicket user and write them into database				
 				$qry_update_ostuser_computer = "update ost_user 
