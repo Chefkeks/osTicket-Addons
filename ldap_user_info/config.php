@@ -2,7 +2,7 @@
 
 class GlobalConfig {
 	// Version and Info
-	public $version = "v0.3";
+	public $version = "v0.4";
 	
 	// DEBUG and LOGG
     public $debug = "true";
