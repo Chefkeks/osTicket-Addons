@@ -48,6 +48,7 @@ Requirements
   - v1.9.8.1
   - v1.9.9
   - v1.9.11
+  - v1.9.12
 -	LDAP User Info Addon v0.2 or newer
 -	osTicket username(s) must match LDAP samaccountusername(s)
 -	LDAP users must have a mail address
