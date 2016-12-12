@@ -50,5 +50,7 @@ Requirements
   - v1.9.11
   - v1.9.12
   - v1.9.14
+  - v1.9.15
+  - v1.10
 -	osTicket username(s) must match LDAP samaccountusername(s)
 -	LDAP users must have a mail address
